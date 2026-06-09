@@ -1198,7 +1198,6 @@ def get_land_suitability_tile(geometry, date_start, date_end):
             'fae6a0'   # 100 — Moss/lichen
         ]
     }
-
     map_id = worldcover.getMapId(vis_params)
     return {
         'tile_url': map_id['tile_fetcher'].url_format,
@@ -1212,5 +1211,161 @@ def get_land_suitability_tile(geometry, date_start, date_end):
             {'color': '#b4b4b4', 'label': 'Bare/sparse'  },
             {'color': '#0064c8', 'label': 'Water bodies' },
             {'color': '#0096a0', 'label': 'Wetland'      },
+        ]
+    }
+
+def get_ground_water_score(geometry, date_start, date_end):
+
+    geo_type = geometry.type().getInfo()
+    if geo_type == 'Point':
+        geometry = geometry.buffer(25000)
+
+    # GRACE — disponible uniquement 2002-2017
+    GRACE_START = '2002-04-01'
+    GRACE_END   = '2017-01-07'
+
+    # Vérifier si la période demandée est dans le range GRACE
+    from datetime import datetime
+    req_start = datetime.strptime(date_start, '%Y-%m-%d')
+    req_end   = datetime.strptime(date_end,   '%Y-%m-%d')
+    grc_end   = datetime.strptime(GRACE_END,  '%Y-%m-%d')
+    grc_start = datetime.strptime(GRACE_START,'%Y-%m-%d')
+
+    if req_start > grc_end or req_end < grc_start:
+        return {
+            'error'        : 'no_data',
+            'message'      : f'Aucune donnée disponible pour cette période. GRACE couvre uniquement 2002-04-01 → 2017-01-07.',
+            'grace_start'  : GRACE_START,
+            'grace_end'    : GRACE_END,
+            'dataset'      : 'NASA GRACE — Liquid Water Equivalent Thickness'
+        }
+
+    # Ajuster la période au range disponible
+    adjusted_start = max(date_start, GRACE_START)
+    adjusted_end   = min(date_end,   GRACE_END)
+
+    grace = (ee.ImageCollection('NASA/GRACE/MASS_GRIDS/LAND')
+               .filterBounds(geometry)
+               .filterDate(adjusted_start, adjusted_end)
+               .select(['lwe_thickness_csr',
+                        'lwe_thickness_gfz',
+                        'lwe_thickness_jpl']))
+
+    grace_size = grace.size().getInfo()
+
+    if grace_size == 0:
+        return {
+            'error'  : 'no_data',
+            'message': f'Aucune image GRACE disponible pour {adjusted_start} → {adjusted_end}.',
+            'dataset': 'NASA GRACE — Liquid Water Equivalent Thickness'
+        }
+
+    # Moyenne des 3 centres de recherche
+    mean_image = grace.mean()
+
+    lwe = mean_image.expression(
+        '(CSR + GFZ + JPL) / 3',
+        {
+            'CSR': mean_image.select('lwe_thickness_csr'),
+            'GFZ': mean_image.select('lwe_thickness_gfz'),
+            'JPL': mean_image.select('lwe_thickness_jpl')
+        }
+    ).rename('lwe_mean')
+
+    stats     = lwe.reduceRegion(reducer=ee.Reducer.mean(), geometry=geometry, scale=25000, bestEffort=True).getInfo()
+    stats_min = lwe.reduceRegion(reducer=ee.Reducer.min(),  geometry=geometry, scale=25000, bestEffort=True).getInfo()
+    stats_max = lwe.reduceRegion(reducer=ee.Reducer.max(),  geometry=geometry, scale=25000, bestEffort=True).getInfo()
+
+    lwe_val = round(stats.get('lwe_mean', 0) or 0, 2)
+    lwe_min = round(stats_min.get('lwe_mean', 0) or 0, 2)
+    lwe_max = round(stats_max.get('lwe_mean', 0) or 0, 2)
+
+    if lwe_val >= 2:
+        color = '#0D47A1'
+        label = 'Nappe bien alimentée'
+    elif lwe_val >= 0:
+        color = '#1976D2'
+        label = 'Nappe modérée'
+    elif lwe_val >= -5:
+        color = '#90CAF9'
+        label = 'Nappe faible'
+    else:
+        color = '#E3F2FD'
+        label = 'Nappe très faible / déficit'
+
+    return {
+        'lwe_mean_cm'    : lwe_val,
+        'lwe_min_cm'     : lwe_min,
+        'lwe_max_cm'     : lwe_max,
+        'color'          : color,
+        'label'          : label,
+        'grace_images'   : grace_size,
+        'adjusted_start' : adjusted_start,
+        'adjusted_end'   : adjusted_end,
+        'dataset'        : 'NASA GRACE — Liquid Water Equivalent Thickness (2002-2017)'
+    }
+
+def get_ground_water_tile(geometry, date_start, date_end):
+
+    geo_type = geometry.type().getInfo()
+    if geo_type == 'Point':
+        geometry = geometry.buffer(25000)
+
+    GRACE_START = '2002-04-01'
+    GRACE_END   = '2017-01-07'
+
+    from datetime import datetime
+    req_start = datetime.strptime(date_start, '%Y-%m-%d')
+    req_end   = datetime.strptime(date_end,   '%Y-%m-%d')
+
+    if req_start > datetime.strptime(GRACE_END, '%Y-%m-%d') or \
+       req_end   < datetime.strptime(GRACE_START, '%Y-%m-%d'):
+        return {'error': 'no_data', 'message': 'Période hors range GRACE (2002-2017)'}
+
+    adjusted_start = max(date_start, GRACE_START)
+    adjusted_end   = min(date_end,   GRACE_END)
+
+    grace = (ee.ImageCollection('NASA/GRACE/MASS_GRIDS/LAND')
+               .filterBounds(geometry)
+               .filterDate(adjusted_start, adjusted_end)
+               .select(['lwe_thickness_csr',
+                        'lwe_thickness_gfz',
+                        'lwe_thickness_jpl']))
+
+    mean_image = grace.mean()
+
+    lwe = mean_image.expression(
+        '(CSR + GFZ + JPL) / 3',
+        {
+            'CSR': mean_image.select('lwe_thickness_csr'),
+            'GFZ': mean_image.select('lwe_thickness_gfz'),
+            'JPL': mean_image.select('lwe_thickness_jpl')
+        }
+    ).rename('lwe_mean').clip(geometry)
+
+    vis_params = {
+        'min'    : -10,
+        'max'    : 5,
+        'palette': [
+            'a50026',
+            'f46d43',
+            'fee090',
+            'e0f3f8',
+            '74add1',
+            '313695'
+        ]
+    }
+
+    map_id = lwe.getMapId(vis_params)
+    return {
+        'tile_url': map_id['tile_fetcher'].url_format,
+        'dataset' : 'NASA GRACE — LWE Thickness',
+        'legend'  : [
+            {'color': '#a50026', 'label': '< -10 cm — Déficit très sévère'},
+            {'color': '#f46d43', 'label': '-7 cm — Déficit sévère'        },
+            {'color': '#fee090', 'label': '-4 cm — Déficit modéré'        },
+            {'color': '#e0f3f8', 'label': '-1 cm — Légèrement sec'        },
+            {'color': '#74add1', 'label': '+1 cm — Modéré'                },
+            {'color': '#313695', 'label': '+5 cm — Bien alimenté'         },
         ]
     }

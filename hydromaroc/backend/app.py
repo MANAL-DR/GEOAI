@@ -1,8 +1,10 @@
+import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
 import ee
+import json
 
 from gee_engine import (
     get_precipitation_score,
@@ -24,7 +26,9 @@ from gee_engine import (
     get_temperature_score,   # ← nouveau
     get_temperature_tile,
     get_land_suitability_score,
-    get_land_suitability_tile
+    get_land_suitability_tile,
+    get_ground_water_score,
+    get_ground_water_tile
 )
 
 load_dotenv()
@@ -667,11 +671,9 @@ def temperature_tile():
 
 @app.route('/api/all-morocco/temperature', methods=['POST'])
 def all_morocco_temperature():
-    import json, os
     data       = request.json
     date_start = data.get('dateStart', '2023-01-01')
     date_end   = data.get('dateEnd',   '2023-12-31')
-
     base_path = os.path.join(
         os.path.dirname(__file__),
         'data/static/ma.geojson'
@@ -705,7 +707,6 @@ def all_morocco_temperature():
                 'label'   : 'Erreur',
                 'geometry': feature['geometry']
             })
-
     return jsonify({'regions': results})
 
 @app.route('/api/analysis/land-suitability', methods=['POST'])
@@ -750,18 +751,16 @@ def land_suitability_tile():
 
 @app.route('/api/all-morocco/land-suitability', methods=['POST'])
 def all_morocco_land_suitability():
-    import json, os
     data       = request.json
     date_start = data.get('dateStart', '2023-01-01')
     date_end   = data.get('dateEnd',   '2023-12-31')
-
     base_path = os.path.join(
         os.path.dirname(__file__),
         'data/static/ma.geojson'
     )
     if not os.path.exists(base_path):
         return jsonify({'error': 'ma.geojson not found'}), 404
-
+    
     with open(base_path) as f:
         regions = json.load(f)
 
@@ -791,6 +790,98 @@ def all_morocco_land_suitability():
             })
 
     return jsonify({'regions': results})
+
+@app.route('/api/analysis/ground-water', methods=['POST'])
+def ground_water():
+    data = request.json
+    required = ['geometry', 'dateStart', 'dateEnd']
+    for field in required:
+        if field not in data:
+            return jsonify({'error': 'Champ manquant : ' + field}), 400
+    try:
+        geometry = ee.Geometry(data['geometry'])
+        result   = get_ground_water_score(
+            geometry   = geometry,
+            date_start = data['dateStart'],
+            date_end   = data['dateEnd']
+        )
+        return jsonify(result)
+    except Exception as e:
+        print('ERREUR ground-water:', str(e))
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/analysis/ground-water-tile', methods=['POST'])
+def ground_water_tile():
+    data = request.json
+    required = ['geometry', 'dateStart', 'dateEnd']
+    for field in required:
+        if field not in data:
+            return jsonify({'error': 'Champ manquant : ' + field}), 400
+    try:
+        geometry = ee.Geometry(data['geometry'])
+        result   = get_ground_water_tile(
+            geometry   = geometry,
+            date_start = data['dateStart'],
+            date_end   = data['dateEnd']
+        )
+        return jsonify(result)
+    except Exception as e:
+        print('ERREUR ground-water-tile:', str(e))
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/all-morocco/ground-water', methods=['POST'])
+def all_morocco_ground_water():
+    data       = request.json
+    date_start = data.get('dateStart', '2023-01-01')
+    date_end   = data.get('dateEnd',   '2023-12-31')
+    base_path = os.path.join(
+        os.path.dirname(__file__),
+        'data/static/ma.geojson'
+    )
+    if not os.path.exists(base_path):
+        return jsonify({'error': 'ma.geojson not found'}), 404
+
+    with open(base_path) as f:
+        regions = json.load(f)
+
+    results = []
+    for feature in regions['features']:
+        name = feature['properties'].get('name', 'unknown')
+        print(f'Ground water: {name}')
+        try:
+            geom   = ee.Geometry(feature['geometry'])
+            result = get_ground_water_score(geom, date_start, date_end)
+            if result.get('error') == 'no_data':
+                results.append({
+                    'name'    : name,
+                    'color'   : '#666666',
+                    'label'   : 'Pas de donnée',
+                    'message' : result.get('message', ''),
+                    'geometry': feature['geometry']
+                })
+                continue
+
+            results.append({
+                'name'       : name,
+                'color'      : result['color'],
+                'label'      : result['label'],
+                'lwe_mean_cm': result['lwe_mean_cm'],
+                'source'     : result['source'],
+                'geometry'   : feature['geometry']
+            })
+        except Exception as e:
+            print(f'Error {name}: {e}')
+            results.append({
+                'name'    : name,
+                'color'   : '#E3F2FD',
+                'label'   : 'Erreur',
+                'geometry': feature['geometry']
+            })
+
+    return jsonify({'regions': results})
+
 
 # app.run() doit toujours etre en dernier
 if __name__ == '__main__':

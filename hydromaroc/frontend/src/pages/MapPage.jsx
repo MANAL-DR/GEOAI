@@ -24,6 +24,9 @@ import {
   fetchAllMoroccoTemperature,
   fetchAllMoroccoLandSuitability,
   fetchWaterSources, 
+  fetchGroundWater,
+  fetchGroundWaterTile,
+  fetchAllMoroccoGroundWater
 } from '../api/geeApi'
 
 
@@ -102,7 +105,10 @@ const handlePanelClick = async (panelId) => {
           geometry: f.geometry
         }))
         setRegionsData(regions)
-      }
+      } else if (panelId === 'ground-water') {
+        const data = await fetchAllMoroccoGroundWater(dateStart, dateEnd)
+        setRegionsData(data.regions)
+}
     } catch (err) {
       alert('Erreur : ' + err.message)
     } finally {
@@ -157,7 +163,19 @@ const handlePanelClick = async (panelId) => {
         setTileLegend(tileData.legend)
         setTileTitle('ESA WorldCover — Occupation du sol')
       }
+    }else if (panelId === 'ground-water') {
+  data = await fetchGroundWater(geometry, dateStart, dateEnd)
+  setPanelData(data)
+  if ((mode === 'box' || mode === 'region') && !data.error) {
+    const tileData = await fetchGroundWaterTile(geometry, dateStart, dateEnd)
+    if (!tileData.error) {
+      setTileUrl(tileData.tile_url)
+      setTileLegend(tileData.legend)
+      setTileTitle('Ground Water — LWE Thickness (cm)')
     }
+  }
+}
+    
 
   } catch (err) {
     alert('Erreur : ' + err.message)
@@ -209,6 +227,7 @@ const handleRegionClick = async (regionInfo) => {
        (activePanel === 'surface-water'   ||
         activePanel === 'precipitation'   ||
         activePanel === 'temperature'     ||
+        activePanel === 'ground-water'    ||
         activePanel === 'land-suitability') && (
         <ResultCard
           panelId={activePanel}
@@ -345,6 +364,38 @@ const handleRegionClick = async (regionInfo) => {
           background: item.color, border: '1px solid #333'
         }} />
         <span style={{ fontSize: '10px', color: '#aaa' }}>{item.label}</span>
+      </div>
+    ))}
+  </div>
+)}
+       {/* Légende ground water AllMorocco */}
+      {mode === 'allmorocco' && activePanel === 'ground-water' && (
+  <div style={{
+    position: 'absolute', bottom: '56px', right: '16px',
+    background: '#1a1d26', border: '1px solid #2a2d3a',
+    borderRadius: '10px', padding: '12px 14px', zIndex: 1000
+  }}>
+    <div style={{
+      fontSize: '10px', fontWeight: '600', color: '#666',
+      textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px'
+    }}>
+      Ground Water — GRACE
+    </div>
+    {[
+      { color: '#0D47A1', label: '≥ 2cm'  },
+      { color: '#1976D2', label: '0–2cm'         },
+      { color: '#90CAF9', label: '(-5–0cm)'         },
+      { color: '#E3F2FD', label: '< -5cm)'       },
+    ].map(item => (
+      <div key={item.label} style={{
+        display: 'flex', alignItems: 'center',
+        gap: '8px', marginBottom: '5px'
+      }}>
+        <div style={{
+          width: '13px', height: '13px', borderRadius: '3px',
+          background: item.color, border: '1px solid #333'
+        }} />
+        <span style={{ fontSize: '11px', color: '#aaa' }}>{item.label}</span>
       </div>
     ))}
   </div>

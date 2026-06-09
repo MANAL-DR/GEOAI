@@ -188,3 +188,30 @@ export async function fetchAllMoroccoLandSuitability(dateStart, dateEnd) {
   return res.json()
 }
 
+export async function fetchGroundWater(geometry, dateStart, dateEnd) {
+  const res = await fetch('/api/analysis/ground-water', {
+    method : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body   : JSON.stringify({ geometry, dateStart, dateEnd })
+  })
+  return res.json()
+}
+
+export async function fetchGroundWaterTile(geometry, dateStart, dateEnd) {
+  const res = await fetch('/api/analysis/ground-water-tile', {
+    method : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body   : JSON.stringify({ geometry, dateStart, dateEnd })
+  })
+  return res.json()
+}
+
+export async function fetchAllMoroccoGroundWater(dateStart, dateEnd) {
+  const res = await fetch('/api/all-morocco/ground-water', {
+    method : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body   : JSON.stringify({ dateStart, dateEnd })
+  })
+  return res.json()
+}
+

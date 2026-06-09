@@ -30,34 +30,50 @@ export default function ResultCard({ panelId, data, loading }) {
       ]
     },
     'temperature': {
-        title   : 'Température',
-        icon    : '🌡️',
-        color   : '#f46d43',
-        gradient: 'linear-gradient(135deg, #a50026, #f46d43)',
-        source  : 'MODIS MOD11A2',
-        fields  : [
-            { key: 'lst_day_mean',   label: 'Temp. diurne moy.',  unit: ' °C' },
-            { key: 'lst_night_mean', label: 'Temp. nocturne moy.', unit: ' °C' },
-            { key: 'lst_min',        label: 'Temp. minimale',      unit: ' °C' },
-            { key: 'lst_max',        label: 'Temp. maximale',      unit: ' °C' },
-            { key: 'amplitude',      label: 'Amplitude jour/nuit', unit: ' °C' },
-  ]
+      title   : 'Température',
+      icon    : '🌡️',
+      color   : '#f46d43',
+      gradient: 'linear-gradient(135deg, #a50026, #f46d43)',
+      source  : 'MODIS MOD11A2',
+      fields  : [
+        { key: 'lst_day_mean',   label: 'Temp. diurne moy.',   unit: ' °C' },
+        { key: 'lst_night_mean', label: 'Temp. nocturne moy.', unit: ' °C' },
+        { key: 'lst_min',        label: 'Temp. minimale',      unit: ' °C' },
+        { key: 'lst_max',        label: 'Temp. maximale',      unit: ' °C' },
+        { key: 'amplitude',      label: 'Amplitude jour/nuit', unit: ' °C' },
+      ]
     },
     'land-suitability': {
-  title   : 'Land Suitability',
-  icon    : '🗺️',
-  color   : '#006400',
-  gradient: 'linear-gradient(135deg, #004d00, #006400)',
-  source  : 'ESA WorldCover v200',
-  fields  : [
-    { key: 'dominant_class', label: 'Classe dominante', unit: ''     },
-    { key: 'dominant_pct',   label: 'Couverture',       unit: '%'    },
-    { key: 'total_km2',      label: 'Surface analysée', unit: ' km²' },
-  ]
-},
+      title   : 'Land Suitability',
+      icon    : '🗺️',
+      color   : '#006400',
+      gradient: 'linear-gradient(135deg, #004d00, #006400)',
+      source  : 'ESA WorldCover v200',
+      fields  : [
+        { key: 'dominant_class', label: 'Classe dominante', unit: ''     },
+        { key: 'dominant_pct',   label: 'Couverture',       unit: '%'    },
+        { key: 'total_km2',      label: 'Surface analysée', unit: ' km²' },
+      ]
+    },
+    'ground-water': {
+      title   : 'Ground Water',
+      icon    : '💧',
+      color   : '#1565C0',
+      gradient: 'linear-gradient(135deg, #0D47A1, #1565C0)',
+      source  : 'NASA GRACE — LWE Thickness',
+      fields  : [
+        { key: 'label',       label: 'Statut nappe',   unit: ''    },
+        { key: 'lwe_mean_cm', label: 'LWE moyen',      unit: ' cm' },
+        { key: 'lwe_min_cm',  label: 'LWE minimum',    unit: ' cm' },
+        { key: 'lwe_max_cm',  label: 'LWE maximum',    unit: ' cm' },
+        { key: 'source',      label: 'Source données', unit: ''    },
+      ]
+    },
   }
+
   const config = configs[panelId]
   if (!config) return null
+
   return (
     <div style={{
       position    : 'absolute',
@@ -107,98 +123,133 @@ export default function ResultCard({ panelId, data, loading }) {
 
         ) : data ? (
           <>
-            {/* Badge statut */}
-            <div style={{
-              display      : 'flex',
-              alignItems   : 'center',
-              gap          : '8px',
-              padding      : '8px 10px',
-              background   : (data.color || config.color) + '18',
-              borderRadius : '10px',
-              border       : `1px solid ${data.color || config.color}33`,
-              marginBottom : '12px'
-            }}>
-              {/* Score circulaire */}
-              </div>
-            {/* Métriques */}
-            {config.fields.map(field => (
-              data[field.key] !== undefined && data[field.key] !== null && (
-                <div key={field.key} style={{
-                  display        : 'flex',
-                  justifyContent : 'space-between',
-                  alignItems     : 'center',
-                  padding        : '6px 0',
-                  borderBottom   : '1px solid #1e2130'
-                }}>
-                  <span style={{ fontSize: '11px', color: '#666' }}>
-                    {field.label}
-                  </span>
-                  <span style={{
-                    fontSize  : '12px',
-                    fontWeight: '500',
-                    color     : '#e8e8e4'
-                  }}>
-                    {data[field.key]}{field.unit}
-                  </span>
+            {/* ── NOUVEAU — Message no data ───────────────────── */}
+            {data.error === 'no_data' ? (
+              <div style={{
+                textAlign   : 'center',
+                padding     : '16px 8px',
+                background  : '#1a1d26',
+                borderRadius: '8px',
+                border      : '1px solid #2a2d3a'
+              }}>
+                <div style={{ fontSize: '24px', marginBottom: '8px' }}>📭</div>
+                <div style={{ fontSize: '11px', color: '#e8e8e4', marginBottom: '6px' }}>
+                  Aucune donnée disponible
                 </div>
-              )
-            ))}
-            {/* Classes WorldCover détectées */}
-{panelId === 'land-suitability' && data?.classes && (
-  <div style={{ marginTop: '10px' }}>
-    <div style={{
-      fontSize      : '9px',
-      color         : '#555',
-      textTransform : 'uppercase',
-      letterSpacing : '0.06em',
-      marginBottom  : '6px'
-    }}>
-      Occupation du sol (ESA WorldCover)
-    </div>
-    {Object.entries(data.classes)
-      .sort((a, b) => b[1].pct - a[1].pct)
-      .map(([code, info]) => (
-        <div key={code} style={{
-          display     : 'flex',
-          alignItems  : 'center',
-          gap         : '6px',
-          marginBottom: '4px'
-        }}>
-          <div style={{
-            width       : '10px',
-            height      : '10px',
-            borderRadius: '2px',
-            background  : info.color,
-            flexShrink  : 0,
-            border      : '1px solid rgba(255,255,255,0.1)'
-          }} />
-          <div style={{ flex: 1, fontSize: '10px', color: '#aaa' }}>
-            {info.label}
-          </div>
-          <div style={{ fontSize: '10px', color: '#e8e8e4', fontWeight: '500' }}>
-            {info.pct}%
-          </div>
-          <div style={{ fontSize: '9px', color: '#555' }}>
-            {info.area_km2} km²
-          </div>
-        </div>
-      ))
-    }
-  </div>
-)}
+                <div style={{ fontSize: '10px', color: '#555', lineHeight: '1.5' }}>
+                  {data.message}
+                </div>
+                <div style={{
+                  marginTop   : '8px',
+                  fontSize    : '9px',
+                  color       : '#378ADD',
+                  padding     : '4px 8px',
+                  background  : '#378ADD11',
+                  borderRadius: '6px'
+                }}>
+                  Essaie une période entre 2002 et 2017
+                </div>
+              </div>
 
-            {/* Dataset source */}
-            <div style={{
-              marginTop  : '10px',
-              padding    : '5px 8px',
-              background : '#0f1117',
-              borderRadius: '6px',
-              fontSize   : '9px',
-              color      : '#444',
-              textAlign  : 'center'
-            }}>
-            {data.dataset}
-            </div>
+            ) : (
+              <>
+                {/* Badge statut */}
+                <div style={{
+                  display      : 'flex',
+                  alignItems   : 'center',
+                  gap          : '8px',
+                  padding      : '8px 10px',
+                  background   : (data.color || config.color) + '18',
+                  borderRadius : '10px',
+                  border       : `1px solid ${data.color || config.color}33`,
+                  marginBottom : '12px'
+                }}>
+                  {/* Score circulaire */}
+                </div>
+
+                {/* Métriques */}
+                {config.fields.map(field => (
+                  data[field.key] !== undefined && data[field.key] !== null && (
+                    <div key={field.key} style={{
+                      display        : 'flex',
+                      justifyContent : 'space-between',
+                      alignItems     : 'center',
+                      padding        : '6px 0',
+                      borderBottom   : '1px solid #1e2130'
+                    }}>
+                      <span style={{ fontSize: '11px', color: '#666' }}>
+                        {field.label}
+                      </span>
+                      <span style={{
+                        fontSize  : '12px',
+                        fontWeight: '500',
+                        color     : '#e8e8e4'
+                      }}>
+                        {data[field.key]}{field.unit}
+                      </span>
+                    </div>
+                  )
+                ))}
+
+                {/* Classes WorldCover détectées */}
+                {panelId === 'land-suitability' && data?.classes && (
+                  <div style={{ marginTop: '10px' }}>
+                    <div style={{
+                      fontSize      : '9px',
+                      color         : '#555',
+                      textTransform : 'uppercase',
+                      letterSpacing : '0.06em',
+                      marginBottom  : '6px'
+                    }}>
+                      Occupation du sol (ESA WorldCover)
+                    </div>
+                    {Object.entries(data.classes)
+                      .sort((a, b) => b[1].pct - a[1].pct)
+                      .map(([code, info]) => (
+                        <div key={code} style={{
+                          display     : 'flex',
+                          alignItems  : 'center',
+                          gap         : '6px',
+                          marginBottom: '4px'
+                        }}>
+                          <div style={{
+                            width       : '10px',
+                            height      : '10px',
+                            borderRadius: '2px',
+                            background  : info.color,
+                            flexShrink  : 0,
+                            border      : '1px solid rgba(255,255,255,0.1)'
+                          }} />
+                          <div style={{ flex: 1, fontSize: '10px', color: '#aaa' }}>
+                            {info.label}
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#e8e8e4', fontWeight: '500' }}>
+                            {info.pct}%
+                          </div>
+                          <div style={{ fontSize: '9px', color: '#555' }}>
+                            {info.area_km2} km²
+                          </div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
+
+                {/* Dataset source */}
+                <div style={{
+                  marginTop   : '10px',
+                  padding     : '5px 8px',
+                  background  : '#0f1117',
+                  borderRadius: '6px',
+                  fontSize    : '9px',
+                  color       : '#444',
+                  textAlign   : 'center'
+                }}>
+                  {data.dataset}
+                </div>
+              </>
+            )}
+            {/* ── FIN NOUVEAU ─────────────────────────────────── */}
           </>
 
         ) : (
