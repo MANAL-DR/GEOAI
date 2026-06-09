@@ -113,7 +113,7 @@ export default function MapView({
               fillColor: '#1a3a5c', fillOpacity: 0.3
             },
             onEachFeature: (feature, layer) => {
-              const nom = feature.properties.NAME_1 || 'Region'
+              const nom = feature.properties.name || 'Region'
               layer.bindTooltip(nom, {
                 permanent: true, direction: 'center', className: 'region-label'
               })
@@ -130,7 +130,7 @@ export default function MapView({
                   selectedReg.current.setStyle({ fillOpacity: 0.3, fillColor: '#1a3a5c', color: '#378ADD' })
                 layer.setStyle({ fillOpacity: 0.5, fillColor: '#1D9E75', color: '#1D9E75' })
                 selectedReg.current = layer
-                onSelect(feature.geometry, feature.properties.NAME_1)
+                onSelect(feature.geometry, feature.properties.name)
               })
             }
           }).addTo(map)

@@ -527,17 +527,17 @@ def all_morocco_surface_water():
     date_end   = data.get('dateEnd',   '2023-12-31')
     base_path = os.path.join(
         os.path.dirname(__file__),
-        'data/static/morocco_regions.geojson'
+        'data/static/ma.geojson'
     )
     if not os.path.exists(base_path):
-        return jsonify({'error': 'morocco_regions.geojson not found'}), 404
+        return jsonify({'error': 'ma.geojson not found'}), 404
 
     with open(base_path) as f:
         regions = json.load(f)
 
     results = []
     for feature in regions['features']:
-        name = feature['properties'].get('NAME_1', 'unknown')
+        name = feature['properties'].get('name', 'unknown')
         print(f'Surface water: {name}')
         try:
             geom   = ee.Geometry(feature['geometry'])
@@ -574,17 +574,17 @@ def all_morocco_precipitation():
 
     base_path = os.path.join(
         os.path.dirname(__file__),
-        'data/static/morocco_regions.geojson'
+        'data/static/ma.geojson'
     )
     if not os.path.exists(base_path):
-        return jsonify({'error': 'morocco_regions.geojson not found'}), 404
+        return jsonify({'error': 'ma.geojson not found'}), 404
 
     with open(base_path) as f:
         regions = json.load(f)
 
     results = []
     for feature in regions['features']:
-        name = feature['properties'].get('NAME_1', 'unknown')
+        name = feature['properties'].get('name', 'unknown')
         print(f'Precipitation: {name}')
         try:
             geom   = ee.Geometry(feature['geometry'])
@@ -674,17 +674,17 @@ def all_morocco_temperature():
 
     base_path = os.path.join(
         os.path.dirname(__file__),
-        'data/static/morocco_regions.geojson'
+        'data/static/ma.geojson'
     )
     if not os.path.exists(base_path):
-        return jsonify({'error': 'morocco_regions.geojson not found'}), 404
+        return jsonify({'error': 'ma.geojson not found'}), 404
 
     with open(base_path) as f:
         regions = json.load(f)
 
     results = []
     for feature in regions['features']:
-        name = feature['properties'].get('NAME_1', 'unknown')
+        name = feature['properties'].get('name', 'unknown')
         print(f'Temperature: {name}')
         try:
             geom   = ee.Geometry(feature['geometry'])
@@ -692,7 +692,6 @@ def all_morocco_temperature():
             results.append({
                 'name'          : name,
                 'color'         : result['color'],
-                'label'         : result['label'],
                 'lst_day_mean'  : result['lst_day_mean'],
                 'lst_night_mean': result['lst_night_mean'],
                 'amplitude'     : result['amplitude'],
@@ -758,17 +757,17 @@ def all_morocco_land_suitability():
 
     base_path = os.path.join(
         os.path.dirname(__file__),
-        'data/static/morocco_regions.geojson'
+        'data/static/ma.geojson'
     )
     if not os.path.exists(base_path):
-        return jsonify({'error': 'morocco_regions.geojson not found'}), 404
+        return jsonify({'error': 'ma.geojson not found'}), 404
 
     with open(base_path) as f:
         regions = json.load(f)
 
     results = []
     for feature in regions['features']:
-        name = feature['properties'].get('NAME_1', 'unknown')
+        name = feature['properties'].get('name', 'unknown')
         print(f'Land suitability: {name}')
         try:
             geom   = ee.Geometry(feature['geometry'])
