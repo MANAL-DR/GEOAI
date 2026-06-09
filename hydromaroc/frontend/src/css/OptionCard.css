@@ -1,0 +1,25 @@
+.option-card {
+  background: #1a1d24;
+  border: 1px solid #2b313d;
+  border-radius: 12px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.option-card:hover {
+  border-color: #40916c;
+  transform: translateY(-1px);
+}
+
+.option-card h4 {
+  margin: 0 0 0.4rem;
+  color: #f8fafc;
+  font-size: 15px;
+}
+
+.option-card p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 13px;
+}

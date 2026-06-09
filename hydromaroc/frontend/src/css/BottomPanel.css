@@ -1,0 +1,73 @@
+.bottom-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  height: 70px;
+  background: #000000;
+
+  border-top: 1px solid #2b313d;
+
+  transition: height 0.35s ease;
+  z-index: 1000;
+}
+
+.bottom-panel.open {
+  height: 230px;
+}
+
+.panel-handle {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.handle-bar {
+  width: 50px;
+  height: 5px;
+  border-radius: 999px;
+  background: #475569;
+}
+
+.panel-header {
+  padding: 0 1.5rem;
+}
+
+.panel-header h3 {
+  margin: 0;
+  color: white;
+  font-size: 18px;
+}
+
+.panel-tabs {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.panel-tabs button {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding-bottom: 6px;
+  font-size: 14px;
+}
+
+.panel-tabs button.active {
+  color: #74c69d;
+  border-bottom: 2px solid #40916c;
+}
+
+.panel-content {
+  padding: 1.5rem;
+}
+
+.cards-grid {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
