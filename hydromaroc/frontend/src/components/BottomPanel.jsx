@@ -9,16 +9,12 @@ export default function BottomPanel({ onPanelSelect }) {
   return (
     <div className={`bottom-panel ${open ? "open" : ""}`}>
       
-      <div
-        className="panel-handle"
-        onClick={() => setOpen(!open)}
-      >
+      <div className="panel-handle" onClick={() => setOpen(!open)}>
         <div className="handle-bar"></div>
       </div>
 
       <div className="panel-header">
         <h3>Area Analysis</h3>
-
         <div className="panel-tabs">
           <button
             className={activeTab === "Water" ? "active" : ""}
@@ -26,7 +22,6 @@ export default function BottomPanel({ onPanelSelect }) {
           >
             Water
           </button>
-
           <button
             className={activeTab === "Agriculture" ? "active" : ""}
             onClick={() => setActiveTab("Agriculture")}
@@ -40,21 +35,24 @@ export default function BottomPanel({ onPanelSelect }) {
         {activeTab === "Water" && (
           <div className="cards-grid">
             <OptionCard
-              title="Ground Water"
-              description="Aquifer and groundwater analysis."
-              onClick={()=>onPanelSelect("ground-water")}
-            />
-
-            <OptionCard
               title="Surface Water"
-              description="Rivers, lakes and water bodies."
+              description="Rivers, lakes and water bodies — JRC Global Surface Water."
               onClick={() => onPanelSelect("surface-water")}
             />
-
             <OptionCard
-              title="CHIRPS"
-              description="Rainfall and precipitation data."
+              title="Ground Water"
+              description="Aquifer and soil moisture — GLDAS NASA."
+              onClick={() => onPanelSelect("ground-water")}
+            />
+            <OptionCard
+              title="Precipitation"
+              description="Rainfall and precipitation data — CHIRPS v2.0."
               onClick={() => onPanelSelect("precipitation")}
+            />
+            <OptionCard
+              title="Temperature"
+              description="Land surface temperature — MODIS MOD11A2."
+              onClick={() => onPanelSelect("temperature")}
             />
           </div>
         )}
@@ -62,18 +60,19 @@ export default function BottomPanel({ onPanelSelect }) {
         {activeTab === "Agriculture" && (
           <div className="cards-grid">
             <OptionCard
-              title="Crop Suitability"
-              description="Crop recommendations."
+              title="Land Suitability"
+              description="Agricultural suitability — ESA WorldCover v200."
+              onClick={() => onPanelSelect("land-suitability")}
             />
-
             <OptionCard
-              title="Soil Analysis"
-              description="Soil quality indicators."
+              title="Crop Classification"
+              description="ML-based crop type prediction."
+              onClick={() => onPanelSelect("agri")}
             />
-
             <OptionCard
               title="Vegetation"
-              description="NDVI and vegetation metrics."
+              description="NDVI and vegetation metrics — Sentinel-2."
+              onClick={() => onPanelSelect("ndvi")}
             />
           </div>
         )}

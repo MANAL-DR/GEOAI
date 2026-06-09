@@ -134,3 +134,57 @@ export async function fetchAllMoroccoSurfaceWaterTile(dateStart, dateEnd) {
   })
   return res.json()
 }
+export async function fetchTemperature(geometry, dateStart, dateEnd) {
+  const res = await fetch('/api/analysis/temperature', {
+    method : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body   : JSON.stringify({ geometry, dateStart, dateEnd })
+  })
+  return res.json()
+}
+
+export async function fetchTemperatureTile(geometry, dateStart, dateEnd) {
+  const res = await fetch('/api/analysis/temperature-tile', {
+    method : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body   : JSON.stringify({ geometry, dateStart, dateEnd })
+  })
+  return res.json()
+}
+
+export async function fetchAllMoroccoTemperature(dateStart, dateEnd) {
+  const res = await fetch('/api/all-morocco/temperature', {
+    method : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body   : JSON.stringify({ dateStart, dateEnd })
+  })
+  return res.json()
+}
+
+export async function fetchLandSuitability(geometry, dateStart, dateEnd) {
+  const res = await fetch('/api/analysis/land-suitability', {
+    method : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body   : JSON.stringify({ geometry, dateStart, dateEnd })
+  })
+  return res.json()
+}
+
+export async function fetchLandSuitabilityTile(geometry, dateStart, dateEnd) {
+  const res = await fetch('/api/analysis/land-suitability-tile', {
+    method : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body   : JSON.stringify({ geometry, dateStart, dateEnd })
+  })
+  return res.json()
+}
+
+export async function fetchAllMoroccoLandSuitability(dateStart, dateEnd) {
+  const res = await fetch('/api/all-morocco/land-suitability', {
+    method : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body   : JSON.stringify({ dateStart, dateEnd })
+  })
+  return res.json()
+}
+

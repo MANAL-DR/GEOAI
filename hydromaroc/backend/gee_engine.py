@@ -973,3 +973,244 @@ def get_precipitation_tile(geometry, date_start, date_end):
             {'color': '#bd0026', 'label': '800 mm'},
         ]
     }
+
+
+def get_temperature_score(geometry, date_start, date_end):
+
+    geo_type = geometry.type().getInfo()
+    if geo_type == 'Point':
+        geometry = geometry.buffer(5000)
+
+    # MODIS LST — température de surface diurne
+    lst = (ee.ImageCollection('MODIS/061/MOD11A2')
+             .filterBounds(geometry)
+             .filterDate(date_start, date_end)
+             .select('LST_Day_1km')
+             .mean()
+             .multiply(0.02)       # facteur d'échelle officiel
+             .subtract(273.15)     # Kelvin → Celsius
+             .clip(geometry))
+
+    lst_night = (ee.ImageCollection('MODIS/061/MOD11A2')
+                   .filterBounds(geometry)
+                   .filterDate(date_start, date_end)
+                   .select('LST_Night_1km')
+                   .mean()
+                   .multiply(0.02)
+                   .subtract(273.15)
+                   .clip(geometry))
+
+    stats_day = lst.reduceRegion(
+        reducer    = ee.Reducer.mean(),
+        geometry   = geometry,
+        scale      = 1000,
+        bestEffort = True
+    ).getInfo()
+
+    stats_night = lst_night.reduceRegion(
+        reducer    = ee.Reducer.mean(),
+        geometry   = geometry,
+        scale      = 1000,
+        bestEffort = True
+    ).getInfo()
+
+    stats_min = lst.reduceRegion(
+        reducer    = ee.Reducer.min(),
+        geometry   = geometry,
+        scale      = 1000,
+        bestEffort = True
+    ).getInfo()
+
+    stats_max = lst.reduceRegion(
+        reducer    = ee.Reducer.max(),
+        geometry   = geometry,
+        scale      = 1000,
+        bestEffort = True
+    ).getInfo()
+
+    lst_day_mean   = round(stats_day.get('LST_Day_1km',   0) or 0, 1)
+    lst_night_mean = round(stats_night.get('LST_Night_1km', 0) or 0, 1)
+    lst_min        = round(stats_min.get('LST_Day_1km',   0) or 0, 1)
+    lst_max        = round(stats_max.get('LST_Day_1km',   0) or 0, 1)
+    amplitude      = round(lst_day_mean - lst_night_mean, 1)
+
+    if lst_day_mean < 10:
+        color = '#313695'
+    elif lst_day_mean < 20:
+        color = '#74add1'
+    elif lst_day_mean < 30:
+        color = '#fee090'
+    elif lst_day_mean < 40:
+        color = '#f46d43'
+    else:
+        color = '#a50026'
+
+    return {
+        'lst_day_mean'  : lst_day_mean,
+        'lst_night_mean': lst_night_mean,
+        'lst_min'       : lst_min,
+        'lst_max'       : lst_max,
+        'amplitude'     : amplitude,
+        'color'         : color,
+        'dataset'       : 'MODIS MOD11A2 — Land Surface Temperature'
+    }
+
+
+def get_temperature_tile(geometry, date_start, date_end):
+
+    geo_type = geometry.type().getInfo()
+    if geo_type == 'Point':
+        geometry = geometry.buffer(5000)
+
+    lst = (ee.ImageCollection('MODIS/061/MOD11A2')
+             .filterBounds(geometry)
+             .filterDate(date_start, date_end)
+             .select('LST_Day_1km')
+             .mean()
+             .multiply(0.02)
+             .subtract(273.15)
+             .clip(geometry))
+
+    vis_params = {
+        'min'    : 0,
+        'max'    : 50,
+        'palette': [
+            '313695',
+            '74add1', 
+            'fee090', 
+            'f46d43', 
+            'a50026'   
+        ]
+    }
+
+    map_id = lst.getMapId(vis_params)
+    return {
+        'tile_url': map_id['tile_fetcher'].url_format,
+        'dataset' : 'MODIS MOD11A2 — LST Diurne',
+        'legend'  : [
+            {'color': '#313695', 'label': '< 10°C ' },
+            {'color': '#74add1', 'label': '10–20°C'     },
+            {'color': '#fee090', 'label': '20–30°C'   },
+            {'color': '#f46d43', 'label': '30–40°C '     },
+            {'color': '#a50026', 'label': '> 40°C ' },
+        ]
+    }
+
+def get_land_suitability_score(geometry, date_start, date_end):
+
+    geo_type = geometry.type().getInfo()
+    if geo_type == 'Point':
+        geometry = geometry.buffer(5000)
+
+    worldcover = (ee.ImageCollection('ESA/WorldCover/v200')
+                    .first()
+                    .select('Map')
+                    .clip(geometry))
+
+    # Une seule requête GEE
+    pixel_counts = worldcover.reduceRegion(
+        reducer    = ee.Reducer.frequencyHistogram(),
+        geometry   = geometry,
+        scale      = 100,
+        bestEffort = True,
+        maxPixels  = 1e9
+    ).getInfo()
+
+    histogram  = pixel_counts.get('Map', {})
+    pixel_size = 100 * 100  # 100m × 100m = 10000 m²
+
+    # Classes officielles ESA WorldCover
+    CLASS_MAP = {
+        10 : {'label': 'Tree cover',        'color': '#006400'},
+        20 : {'label': 'Shrubland',         'color': '#ffbb22'},
+        30 : {'label': 'Grassland',         'color': '#ffff4c'},
+        40 : {'label': 'Cropland',          'color': '#f096ff'},
+        50 : {'label': 'Built-up',          'color': '#fa0000'},
+        60 : {'label': 'Bare/sparse veg.',  'color': '#b4b4b4'},
+        70 : {'label': 'Snow and ice',      'color': '#f0f0f0'},
+        80 : {'label': 'Permanent water',   'color': '#0064c8'},
+        90 : {'label': 'Herbaceous wetland','color': '#0096a0'},
+        95 : {'label': 'Mangroves',         'color': '#00cf75'},
+        100: {'label': 'Moss and lichen',   'color': '#fae6a0'},
+    }
+
+    total_pixels = sum(histogram.values()) if histogram else 1
+    total_km2    = round(total_pixels * pixel_size / 1e6, 2)
+
+    classes_result = {}
+    dominant_class  = None
+    dominant_pixels = 0
+
+    for code, info in CLASS_MAP.items():
+        pixels   = histogram.get(str(code), 0) or histogram.get(code, 0)
+        area_km2 = round(pixels * pixel_size / 1e6, 3)
+        pct      = round((pixels / total_pixels) * 100, 1) if total_pixels > 0 else 0
+
+        if area_km2 > 0:
+            classes_result[str(code)] = {
+                'label'   : info['label'],
+                'color'   : info['color'],
+                'area_km2': area_km2,
+                'pct'     : pct
+            }
+
+        if pixels > dominant_pixels:
+            dominant_pixels = pixels
+            dominant_class  = code
+
+    dom_info = CLASS_MAP.get(dominant_class, CLASS_MAP[60])
+
+    return {
+        'dominant_class': dom_info['label'],
+        'dominant_color': dom_info['color'],
+        'dominant_pct'  : classes_result.get(str(dominant_class), {}).get('pct', 0),
+        'total_km2'     : total_km2,
+        'classes'       : classes_result,
+        'dataset'       : 'ESA WorldCover v200 (2021)'
+    }
+
+
+def get_land_suitability_tile(geometry, date_start, date_end):
+
+    geo_type = geometry.type().getInfo()
+    if geo_type == 'Point':
+        geometry = geometry.buffer(5000)
+
+    worldcover = (ee.ImageCollection('ESA/WorldCover/v200')
+                    .first()
+                    .select('Map')
+                    .clip(geometry))
+
+    vis_params = {
+        'min'    : 10,
+        'max'    : 100,
+        'palette': [
+            '006400',  # 10 — Tree cover
+            'ffbb22',  # 20 — Shrubland
+            'ffff4c',  # 30 — Grassland
+            'f096ff',  # 40 — Cropland
+            'fa0000',  # 50 — Built-up
+            'b4b4b4',  # 60 — Bare/sparse
+            'f0f0f0',  # 70 — Snow/Ice
+            '0064c8',  # 80 — Water
+            '0096a0',  # 90 — Wetland
+            '00cf75',  # 95 — Mangroves
+            'fae6a0'   # 100 — Moss/lichen
+        ]
+    }
+
+    map_id = worldcover.getMapId(vis_params)
+    return {
+        'tile_url': map_id['tile_fetcher'].url_format,
+        'dataset' : 'ESA WorldCover v200 — Land Cover',
+        'legend'  : [
+            {'color': '#006400', 'label': 'Tree cover'   },
+            {'color': '#ffbb22', 'label': 'Shrubland'    },
+            {'color': '#ffff4c', 'label': 'Grassland'    },
+            {'color': '#f096ff', 'label': 'Cropland'     },
+            {'color': '#fa0000', 'label': 'Built-up'     },
+            {'color': '#b4b4b4', 'label': 'Bare/sparse'  },
+            {'color': '#0064c8', 'label': 'Water bodies' },
+            {'color': '#0096a0', 'label': 'Wetland'      },
+        ]
+    }

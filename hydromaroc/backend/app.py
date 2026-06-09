@@ -20,7 +20,11 @@ from gee_engine import (
     get_worldcover,
     get_water_indices,
     get_jrc_water,
-    get_osm_water_sources
+    get_osm_water_sources,
+    get_temperature_score,   # ← nouveau
+    get_temperature_tile,
+    get_land_suitability_score,
+    get_land_suitability_tile
 )
 
 load_dotenv()
@@ -434,18 +438,6 @@ def get_water_sources():
         'region':   region,
         'count':    len(features)
     })
-# app.run() doit toujours etre en dernier
-if __name__ == '__main__':
-    app.run(
-        debug = True,
-        port  = int(os.getenv('FLASK_PORT', 5000))
-    )
-
-
-
-
-    #--------------------SURFACE WATER CHIRPS-------------------------------------------
-
 
 
 @app.route('/api/analysis/surface-water', methods=['POST'])
@@ -632,3 +624,179 @@ def all_morocco_precipitation():
             })
 
     return jsonify({'regions': results})
+
+@app.route('/api/analysis/temperature', methods=['POST'])
+def temperature():
+    data = request.json
+    required = ['geometry', 'dateStart', 'dateEnd']
+    for field in required:
+        if field not in data:
+            return jsonify({'error': 'Champ manquant : ' + field}), 400
+    try:
+        geometry = ee.Geometry(data['geometry'])
+        result   = get_temperature_score(
+            geometry   = geometry,
+            date_start = data['dateStart'],
+            date_end   = data['dateEnd']
+        )
+        return jsonify(result)
+    except Exception as e:
+        print('ERREUR temperature:', str(e))
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/analysis/temperature-tile', methods=['POST'])
+def temperature_tile():
+    data = request.json
+    required = ['geometry', 'dateStart', 'dateEnd']
+    for field in required:
+        if field not in data:
+            return jsonify({'error': 'Champ manquant : ' + field}), 400
+    try:
+        geometry = ee.Geometry(data['geometry'])
+        result   = get_temperature_tile(
+            geometry   = geometry,
+            date_start = data['dateStart'],
+            date_end   = data['dateEnd']
+        )
+        return jsonify(result)
+    except Exception as e:
+        print('ERREUR temperature-tile:', str(e))
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/all-morocco/temperature', methods=['POST'])
+def all_morocco_temperature():
+    import json, os
+    data       = request.json
+    date_start = data.get('dateStart', '2023-01-01')
+    date_end   = data.get('dateEnd',   '2023-12-31')
+
+    base_path = os.path.join(
+        os.path.dirname(__file__),
+        'data/static/morocco_regions.geojson'
+    )
+    if not os.path.exists(base_path):
+        return jsonify({'error': 'morocco_regions.geojson not found'}), 404
+
+    with open(base_path) as f:
+        regions = json.load(f)
+
+    results = []
+    for feature in regions['features']:
+        name = feature['properties'].get('NAME_1', 'unknown')
+        print(f'Temperature: {name}')
+        try:
+            geom   = ee.Geometry(feature['geometry'])
+            result = get_temperature_score(geom, date_start, date_end)
+            results.append({
+                'name'          : name,
+                'color'         : result['color'],
+                'label'         : result['label'],
+                'lst_day_mean'  : result['lst_day_mean'],
+                'lst_night_mean': result['lst_night_mean'],
+                'amplitude'     : result['amplitude'],
+                'geometry'      : feature['geometry']
+            })
+        except Exception as e:
+            print(f'Error {name}: {e}')
+            results.append({
+                'name'    : name,
+                'color'   : '#fee090',
+                'label'   : 'Erreur',
+                'geometry': feature['geometry']
+            })
+
+    return jsonify({'regions': results})
+
+@app.route('/api/analysis/land-suitability', methods=['POST'])
+def land_suitability():
+    data = request.json
+    required = ['geometry', 'dateStart', 'dateEnd']
+    for field in required:
+        if field not in data:
+            return jsonify({'error': 'Champ manquant : ' + field}), 400
+    try:
+        geometry = ee.Geometry(data['geometry'])
+        result   = get_land_suitability_score(
+            geometry   = geometry,
+            date_start = data['dateStart'],
+            date_end   = data['dateEnd']
+        )
+        return jsonify(result)
+    except Exception as e:
+        print('ERREUR land-suitability:', str(e))
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/analysis/land-suitability-tile', methods=['POST'])
+def land_suitability_tile():
+    data = request.json
+    required = ['geometry', 'dateStart', 'dateEnd']
+    for field in required:
+        if field not in data:
+            return jsonify({'error': 'Champ manquant : ' + field}), 400
+    try:
+        geometry = ee.Geometry(data['geometry'])
+        result   = get_land_suitability_tile(
+            geometry   = geometry,
+            date_start = data['dateStart'],
+            date_end   = data['dateEnd']
+        )
+        return jsonify(result)
+    except Exception as e:
+        print('ERREUR land-suitability-tile:', str(e))
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/all-morocco/land-suitability', methods=['POST'])
+def all_morocco_land_suitability():
+    import json, os
+    data       = request.json
+    date_start = data.get('dateStart', '2023-01-01')
+    date_end   = data.get('dateEnd',   '2023-12-31')
+
+    base_path = os.path.join(
+        os.path.dirname(__file__),
+        'data/static/morocco_regions.geojson'
+    )
+    if not os.path.exists(base_path):
+        return jsonify({'error': 'morocco_regions.geojson not found'}), 404
+
+    with open(base_path) as f:
+        regions = json.load(f)
+
+    results = []
+    for feature in regions['features']:
+        name = feature['properties'].get('NAME_1', 'unknown')
+        print(f'Land suitability: {name}')
+        try:
+            geom   = ee.Geometry(feature['geometry'])
+            result = get_land_suitability_score(geom, date_start, date_end)
+            results.append({
+                'name'          : name,
+                'color'         : result['dominant_color'],   # couleur classe dominante
+                'label'         : result['dominant_class'],   # nom classe dominante
+                'dominant_pct'  : result['dominant_pct'],
+                'total_km2'     : result['total_km2'],
+                'classes'       : result['classes'],
+                'geometry'      : feature['geometry']
+            })
+        except Exception as e:
+            print(f'Error {name}: {e}')
+            results.append({
+                'name'    : name,
+                'color'   : '#b4b4b4',
+                'label'   : 'Erreur',
+                'geometry': feature['geometry']
+            })
+
+    return jsonify({'regions': results})
+
+# app.run() doit toujours etre en dernier
+if __name__ == '__main__':
+    app.run(
+        debug = True,
+        port  = int(os.getenv('FLASK_PORT', 5000))
+    )
+

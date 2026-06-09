@@ -28,7 +28,33 @@ export default function ResultCard({ panelId, data, loading }) {
         { key: 'annual_equiv_mm',   label: 'Equiv. annuel',   unit: ' mm/an'  },
         { key: 'rainy_days',        label: 'Jours de pluie',  unit: ' jours'  },
       ]
-    }
+    },
+    'temperature': {
+        title   : 'Température',
+        icon    : '🌡️',
+        color   : '#f46d43',
+        gradient: 'linear-gradient(135deg, #a50026, #f46d43)',
+        source  : 'MODIS MOD11A2',
+        fields  : [
+            { key: 'lst_day_mean',   label: 'Temp. diurne moy.',  unit: ' °C' },
+            { key: 'lst_night_mean', label: 'Temp. nocturne moy.', unit: ' °C' },
+            { key: 'lst_min',        label: 'Temp. minimale',      unit: ' °C' },
+            { key: 'lst_max',        label: 'Temp. maximale',      unit: ' °C' },
+            { key: 'amplitude',      label: 'Amplitude jour/nuit', unit: ' °C' },
+  ]
+    },
+    'land-suitability': {
+  title   : 'Land Suitability',
+  icon    : '🗺️',
+  color   : '#006400',
+  gradient: 'linear-gradient(135deg, #004d00, #006400)',
+  source  : 'ESA WorldCover v200',
+  fields  : [
+    { key: 'dominant_class', label: 'Classe dominante', unit: ''     },
+    { key: 'dominant_pct',   label: 'Couverture',       unit: '%'    },
+    { key: 'total_km2',      label: 'Surface analysée', unit: ' km²' },
+  ]
+},
   }
   const config = configs[panelId]
   if (!config) return null
@@ -117,6 +143,49 @@ export default function ResultCard({ panelId, data, loading }) {
                 </div>
               )
             ))}
+            {/* Classes WorldCover détectées */}
+{panelId === 'land-suitability' && data?.classes && (
+  <div style={{ marginTop: '10px' }}>
+    <div style={{
+      fontSize      : '9px',
+      color         : '#555',
+      textTransform : 'uppercase',
+      letterSpacing : '0.06em',
+      marginBottom  : '6px'
+    }}>
+      Occupation du sol (ESA WorldCover)
+    </div>
+    {Object.entries(data.classes)
+      .sort((a, b) => b[1].pct - a[1].pct)
+      .map(([code, info]) => (
+        <div key={code} style={{
+          display     : 'flex',
+          alignItems  : 'center',
+          gap         : '6px',
+          marginBottom: '4px'
+        }}>
+          <div style={{
+            width       : '10px',
+            height      : '10px',
+            borderRadius: '2px',
+            background  : info.color,
+            flexShrink  : 0,
+            border      : '1px solid rgba(255,255,255,0.1)'
+          }} />
+          <div style={{ flex: 1, fontSize: '10px', color: '#aaa' }}>
+            {info.label}
+          </div>
+          <div style={{ fontSize: '10px', color: '#e8e8e4', fontWeight: '500' }}>
+            {info.pct}%
+          </div>
+          <div style={{ fontSize: '9px', color: '#555' }}>
+            {info.area_km2} km²
+          </div>
+        </div>
+      ))
+    }
+  </div>
+)}
 
             {/* Dataset source */}
             <div style={{
